@@ -83,6 +83,8 @@ body.is-touch .hint{display:none}
 .board .sc{font-weight:800}
 .board li.me{background:rgba(212,255,26,.12)}
 .board .empty{display:block;padding:20px;text-align:center;color:var(--muted)}
+.board .wall{margin-left:8px;text-decoration:none;font-size:15px}
+.board .wall:hover{filter:brightness(1.3)}
 .mine{margin-top:10px;font-size:14px;color:var(--lime);min-height:20px}
 @media (max-width:640px){.chars{grid-template-columns:repeat(4,minmax(0,1fr))}.brand{font-size:18px}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
@@ -123,7 +125,7 @@ body.is-touch .hint{display:none}
           <div class="in-row"><input id="wallet" maxlength="42" placeholder="Your wallet address (0x…)" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="go" type="submit" id="b-save">Save</button></div>
           <p class="st-msg" id="save-st" role="status" aria-live="polite"></p>
         </form>
-        <div class="row"><button class="go" id="b-again" type="button">Run again</button><button class="go ghost" id="b-chars" type="button">Change character</button><button class="go ghost" id="b-board2" type="button" hidden>Leaderboard</button></div>
+        <div class="row"><button class="go" id="b-again" type="button">Run again</button><button class="go ghost" id="b-chars" type="button">Change character</button><button class="go ghost" id="b-board2" type="button" hidden>Leaderboard</button><button class="go ghost" id="b-wall" type="button">🧱 Write it on the wall</button></div>
         <p class="keys">Press <span class="kbd">Space</span> to run again.</p>
       </div>
     </div>
@@ -423,6 +425,16 @@ try{ if(cfg.supabaseUrl&&cfg.supabaseAnonKey&&/^https:\/\//.test(cfg.supabaseUrl
   sb=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey,{auth:{persistSession:false}}); }catch(e){ sb=null; }
 if(sb){ $('b-board').hidden=false; $('b-board2').hidden=false; $('b-board3').hidden=false; }
 var WRX=/^0x[0-9a-fA-F]{40}$/, savedFor=null;
+var WALL_URL='https://memory-wall-self.vercel.app/', WALL_ORIGIN='https://memory-wall-self.vercel.app';
+var embedded=false; try{ embedded=window.parent!==window; }catch(e){ embedded=true; }
+$('b-wall').onclick=function(){
+  if(!S||S.score<1) return;
+  var w=($('wallet')&&$('wallet').value.trim())||myWallet();
+  if(!WRX.test(w)) w='';
+  if(embedded){ try{ window.parent.postMessage({type:'viberun:leave',score:S.score,wallet:w},WALL_ORIGIN); }catch(e){} }
+  else window.open(WALL_URL+'#leave='+S.score+(w?'&w='+w:''),'_blank','noopener');
+};
+window.addEventListener('message',function(e){ if(e.origin===WALL_ORIGIN&&e.data&&e.data.type==='viberun:pause'&&state==='run') pause(); });
 function myWallet(){ return String(load('wallet','')||''); }
 function short(w){ return w.slice(0,6)+'…'+w.slice(-4); }
 function stMsg(t,k){ var el=$('save-st'); el.textContent=t||''; el.className='st-msg'+(k?' '+k:''); }
@@ -461,6 +473,14 @@ function openBoard(){
       li.innerHTML='<span class="rk">#'+row.rank+'</span>'+(ch?'<img alt="" src="'+ch.src+'">':'<span></span>')+'<span class="wl"></span><span class="sc"></span>';
       li.querySelector('.wl').textContent=short(row.wallet)+(row.reached_moon?'  🚀':''); li.querySelector('.wl').title=row.wallet;
       li.querySelector('.sc').textContent=pad(row.score); ol.appendChild(li); }); }
+    // wallets that also left a memory on the Memory Wall get a 🧱 link to their cell
+    var ws=top.map(function(r){return r.wallet;});
+    if(ws.length) sb.from('memories').select('cell_id,wallet').in('wallet',ws).then(function(q){
+      if(q.error||!q.data) return; var byW={}; q.data.forEach(function(m){ if(!byW[m.wallet]||m.cell_id<byW[m.wallet]) byW[m.wallet]=m.cell_id; });
+      [].forEach.call(ol.querySelectorAll('li'),function(li,i){ var r=top[i]; if(!r||!byW[r.wallet]) return;
+        var a=document.createElement('a'); a.className='wall'; a.href=WALL_URL+'#cell-'+byW[r.wallet]; a.target='_top'; a.title='See their memory on the wall'; a.textContent='🧱';
+        li.querySelector('.wl').appendChild(a); });
+    });
     if(d.me) $('mine').textContent='Your best: '+pad(d.me.score)+'  (#'+d.me.rank+')';
     else if(mw) $('mine').textContent='No saved score for '+short(mw)+' yet.';
     var meRow=ol.querySelector('.me'); if(meRow) meRow.scrollIntoView({block:'nearest'});
