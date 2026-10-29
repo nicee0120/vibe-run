@@ -425,7 +425,7 @@ try{ if(cfg.supabaseUrl&&cfg.supabaseAnonKey&&/^https:\/\//.test(cfg.supabaseUrl
   sb=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey,{auth:{persistSession:false}}); }catch(e){ sb=null; }
 if(sb){ $('b-board').hidden=false; $('b-board2').hidden=false; $('b-board3').hidden=false; }
 var WRX=/^0x[0-9a-fA-F]{40}$/, savedFor=null;
-var WALL_URL='https://memory-wall-self.vercel.app/', WALL_ORIGIN='https://memory-wall-self.vercel.app';
+var WALL_URL='https://memory-wall-self.vercel.app/memory.html', WALL_ORIGIN='https://memory-wall-self.vercel.app';
 var embedded=false; try{ embedded=window.parent!==window; }catch(e){ embedded=true; }
 $('b-wall').onclick=function(){
   if(!S||S.score<1) return;
